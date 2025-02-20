@@ -1,0 +1,56 @@
+version: "1.0"
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql_container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root  # Set root password
+      MYSQL_DATABASE: products  # Create a database at startup
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  node-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: node_container
+    restart: always
+    working_dir: /app
+    environment:
+      - DB_HOST=mysql_container
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=products
+      - DB_PORT=3306
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+      - "9236:9236"  # Debugging port
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: ["npm", "start"]
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_container
+    restart: always
+    environment:
+      PMA_HOST: mysql_container
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "8080:80"
+
+volumes:
+  mysql_data:
